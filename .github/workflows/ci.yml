@@ -1,0 +1,82 @@
+name: AegisFin Enterprise MLOps & Compliance CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Strict Type Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Linting Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy pydantic
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check backend/app
+
+      - name: Run Mypy Strict Typecheck
+        run: |
+          mypy backend/app --ignore-missing-imports
+
+  llmops-eval-harness:
+    name: Pytest & DeepEval Eval Harness
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Automated Compliance & PII Eval Suite
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PYTHONPATH: ./backend
+        run: |
+          pytest -v backend/tests/test_eval_harness.py --junitxml=junit-test-results.xml
+
+      - name: Upload Test Telemetry Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-harness-telemetry
+          path: junit-test-results.xml
+
+  docker-build-check:
+    name: Build & Security Audit Container
+    runs-on: ubuntu-latest
+    needs: llmops-eval-harness
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Build Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: aegisfin-backend:latest

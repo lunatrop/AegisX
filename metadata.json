@@ -1,0 +1,6 @@
+{
+  "name": "AegisFin AI - Enterprise Autonomous Financial Audit & Compliance Engine",
+  "description": "High-throughput enterprise AI financial compliance and audit engine with deterministic PII sanitization, multi-tiered GenAI routing, human-in-the-loop webhooks, and real-time LLMOps telemetry.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
